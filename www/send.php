@@ -2,7 +2,12 @@
 require 'QueueManager.php';
 
 // Получаем имя из GET или POST запроса
-$name = $_POST['name'] ?? $_GET['name'] ?? 'Без имени';
+$name = $_POST['name'] ?? $_GET['name'] ?? '';
+
+if (empty($name)) {
+    header('Location: index.php?error=1');
+    exit;
+}
 
 try {
     $q = new QueueManager();
@@ -14,17 +19,14 @@ try {
     
     $q->publish($data);
     
-    if (php_sapi_name() === 'cli') {
-        echo "✅ Сообщение отправлено в очередь: " . json_encode($data) . "\n";
-    } else {
-        header('Location: index.php?success=1');
-        exit;
-    }
+    // Логируем отправку
+    file_put_contents('sent_messages.log', json_encode($data) . PHP_EOL, FILE_APPEND);
+    
+    header('Location: index.php?success=1');
+    exit;
+
 } catch (Exception $e) {
-    if (php_sapi_name() === 'cli') {
-        echo "❌ Ошибка: " . $e->getMessage() . "\n";
-    } else {
-        header('Location: index.php?error=1');
-        exit;
-    }
+    error_log("Queue error: " . $e->getMessage());
+    header('Location: index.php?error=1');
+    exit;
 }
